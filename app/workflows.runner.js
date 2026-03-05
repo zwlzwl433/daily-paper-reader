@@ -20,6 +20,18 @@ window.DPRWorkflowRunner = (function () {
       dispatchInputs: {
         run_enrich: 'false',
         fetch_days: '30',
+        fetch_mode: 'skims',
+      },
+    },
+    {
+      key: 'daily-month-standard',
+      id: 'daily-paper-reader.yml',
+      name: '立即爬取并处理论文（一个月标准）',
+      desc: '回溯 30 天并使用标准模式生成结果。',
+      dispatchInputs: {
+        run_enrich: 'false',
+        fetch_days: '30',
+        fetch_mode: 'standard',
       },
     },
     {
@@ -49,6 +61,23 @@ window.DPRWorkflowRunner = (function () {
       dispatchInputs: {
         run_enrich: 'false',
         fetch_days: '30',
+        fetch_mode: 'skims',
+      },
+    },
+    '30-skims': {
+      key: 'daily-month-skims',
+      dispatchInputs: {
+        run_enrich: 'false',
+        fetch_days: '30',
+        fetch_mode: 'skims',
+      },
+    },
+    '30-standard': {
+      key: 'daily-month-standard',
+      dispatchInputs: {
+        run_enrich: 'false',
+        fetch_days: '30',
+        fetch_mode: 'standard',
       },
     },
   };
@@ -156,7 +185,17 @@ window.DPRWorkflowRunner = (function () {
       : (await resolveWorkflowRunInputs(owner, repo, token, run.id));
     if (!inputs || typeof inputs !== 'object') return 'daily-now';
     const fetchDays = String(inputs.fetch_days || '').trim();
-    return fetchDays === '30' ? 'daily-month-skims' : 'daily-now';
+    const fetchMode = String(inputs.fetch_mode || '').trim().toLowerCase();
+    if (fetchDays === '30') {
+      if (fetchMode === 'standard') {
+        return 'daily-month-standard';
+      }
+      if (fetchMode === 'skims') {
+        return 'daily-month-skims';
+      }
+      return 'daily-month-skims';
+    }
+    return 'daily-now';
   };
 
   const setStatus = (text, color) => {
@@ -411,6 +450,7 @@ window.DPRWorkflowRunner = (function () {
       const dailyFileRuns = runsByWorkflowId['daily-paper-reader.yml'] || [];
       const dailyNowRuns = [];
       const dailyMonthRuns = [];
+      const dailyMonthStandardRuns = [];
       if (dailyFileRuns.length > 0) {
         const tagged = await Promise.all(
           dailyFileRuns.map((run) =>
@@ -420,6 +460,8 @@ window.DPRWorkflowRunner = (function () {
         tagged.forEach(({ run, runTag }) => {
           if (runTag === 'daily-month-skims') {
             dailyMonthRuns.push(run);
+          } else if (runTag === 'daily-month-standard') {
+            dailyMonthStandardRuns.push(run);
           } else {
             dailyNowRuns.push(run);
           }
@@ -430,6 +472,10 @@ window.DPRWorkflowRunner = (function () {
         const wfId = String(wf.id || '');
         if (wf.id === 'daily-paper-reader.yml' && wf.key === 'daily-month-skims') {
           byWorkflow[String(wf.key)] = dailyMonthRuns.slice(0, 3);
+          return;
+        }
+        if (wf.id === 'daily-paper-reader.yml' && wf.key === 'daily-month-standard') {
+          byWorkflow[String(wf.key)] = dailyMonthStandardRuns.slice(0, 3);
           return;
         }
         if (wf.id === 'daily-paper-reader.yml' && wf.key === 'daily-now') {
@@ -698,17 +744,21 @@ window.DPRWorkflowRunner = (function () {
     return dispatchAndMonitor(wf, extraInputs);
   };
 
-  const runQuickFetchByDays = async (days) => {
+  const runQuickFetchByDays = async (days, extra) => {
     const parsed = parseInt(days, 10);
     const normalized = Number.isFinite(parsed) && parsed > 0 ? String(Math.max(1, parsed)) : '10';
-    const preset = QUICK_FETCH_PRESETS[normalized] || {
+    const options = extra && typeof extra === 'object' ? extra : {};
+    const fetchMode = (typeof options.fetchMode === 'string' ? options.fetchMode : '').trim().toLowerCase();
+    const presetKey = fetchMode ? `${normalized}-${fetchMode}` : normalized;
+    const preset = QUICK_FETCH_PRESETS[presetKey] || QUICK_FETCH_PRESETS[normalized] || {
       key: 'daily-now',
       dispatchInputs: {
         run_enrich: 'false',
         fetch_days: normalized,
       },
     };
-    return runWorkflowByKey(preset.key, preset.dispatchInputs);
+    const mergedInputs = combineInputs(preset.dispatchInputs, options.dispatchInputs);
+    return runWorkflowByKey(preset.key, mergedInputs);
   };
 
   return {

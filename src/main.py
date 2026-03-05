@@ -123,6 +123,12 @@ def main() -> None:
         default=None,
         help="Pass --days to Step1 (fetch arxiv). Default: use config.yaml/state logic.",
     )
+    parser.add_argument(
+        "--fetch-mode",
+        default="auto",
+        choices=("auto", "standard", "skims"),
+        help="Force fetch-run mode: auto(按阈值), standard(非skims), skims(强制skims).",
+    )
     args = parser.parse_args()
 
     python = sys.executable
@@ -131,10 +137,17 @@ def main() -> None:
     run_date_token = resolve_run_date_token(args.fetch_days)
     os.environ["DPR_RUN_DATE"] = run_date_token
     print(f"[INFO] DPR_RUN_DATE={run_date_token}", flush=True)
-    use_skims_mode = args.fetch_days is not None and args.fetch_days >= SKIMS_FETCH_DAYS_THRESHOLD
+    fetch_mode = (args.fetch_mode or "auto").strip().lower()
+    if fetch_mode == "skims":
+        use_skims_mode = True
+    elif fetch_mode == "standard":
+        use_skims_mode = False
+    else:
+        use_skims_mode = args.fetch_days is not None and args.fetch_days >= SKIMS_FETCH_DAYS_THRESHOLD
     if args.fetch_days is not None:
         print(
-            f"[INFO] fetch_days={args.fetch_days}, run_mode={'skims' if use_skims_mode else 'standard'}",
+            f"[INFO] fetch_days={args.fetch_days}, run_mode={'skims' if use_skims_mode else 'standard'}, "
+            f"fetch_mode={fetch_mode}",
             flush=True,
         )
 

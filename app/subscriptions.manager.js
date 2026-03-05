@@ -12,6 +12,7 @@ window.SubscriptionsManager = (function () {
   let msgEl = null;
   let quickRun10dBtn = null;
   let quickRun30dBtn = null;
+  let quickRun30dStandardBtn = null;
   let quickRunConferenceBtn = null;
   let quickRunYearSelect = null;
   let quickRunConferenceSelect = null;
@@ -208,7 +209,7 @@ window.SubscriptionsManager = (function () {
 
   const refreshQuickRunButtons = () => {
     const blocked = hasUnsavedChanges;
-    [quickRun10dBtn, quickRun30dBtn].forEach((btn) => {
+    [quickRun10dBtn, quickRun30dBtn, quickRun30dStandardBtn].forEach((btn) => {
       if (!btn) return;
       btn.disabled = blocked;
       btn.classList.toggle('chat-quick-run-item--disabled', blocked);
@@ -222,7 +223,7 @@ window.SubscriptionsManager = (function () {
     }
   };
 
-  const runQuickFetch = (days, msgEl, tipText) => {
+  const runQuickFetch = (days, msgEl, tipText, runOptions) => {
     if (hasUnsavedChanges) {
       if (msgEl) {
         msgEl.textContent = '检测到未保存修改，请先点击“保存”后再发起快速抓取。';
@@ -237,9 +238,10 @@ window.SubscriptionsManager = (function () {
       }
       return;
     }
-    window.DPRWorkflowRunner.runQuickFetchByDays(days);
+    const options = runOptions && typeof runOptions === 'object' ? runOptions : {};
+    window.DPRWorkflowRunner.runQuickFetchByDays(days, options);
     if (msgEl) {
-      msgEl.textContent = tipText || `已发起 ${days} 天内抓取任务。`;
+      msgEl.textContent = (typeof tipText === 'string' ? tipText : null) || `已发起 ${days} 天内抓取任务。`;
       msgEl.style.color = '#080';
     }
   };
@@ -450,7 +452,8 @@ window.SubscriptionsManager = (function () {
           <div id="arxiv-search-quick-run-side">
             <div class="chat-quick-run-title">快速抓取</div>
             <button id="arxiv-admin-quick-run-10d-btn" class="chat-quick-run-item" type="button">立即搜寻十天内论文</button>
-            <button id="arxiv-admin-quick-run-30d-btn" class="chat-quick-run-item" type="button">立即搜寻三十天内论文</button>
+            <button id="arxiv-admin-quick-run-30d-btn" class="chat-quick-run-item" type="button">立即搜寻三十天内论文（速览）</button>
+            <button id="arxiv-admin-quick-run-30d-standard-btn" class="chat-quick-run-item" type="button">立即搜寻三十天内论文（全标准）</button>
             <div class="chat-quick-run-divider" aria-hidden="true"></div>
             <div class="chat-quick-run-title">会议论文（暂未接入）</div>
             <div class="chat-quick-run-row">
@@ -664,6 +667,7 @@ window.SubscriptionsManager = (function () {
 
     quickRun10dBtn = document.getElementById('arxiv-admin-quick-run-10d-btn');
     quickRun30dBtn = document.getElementById('arxiv-admin-quick-run-30d-btn');
+    quickRun30dStandardBtn = document.getElementById('arxiv-admin-quick-run-30d-standard-btn');
     quickRunConferenceBtn = document.getElementById(
       'arxiv-admin-quick-run-conference-run-btn',
     );
@@ -686,7 +690,7 @@ window.SubscriptionsManager = (function () {
       quickRunConferenceBtn.title = '会议论文抓取功能暂未接入';
     }
     fillQuickRunOptions(quickRunYearSelect, quickRunConferenceSelect);
-    [quickRun10dBtn, quickRun30dBtn].forEach((btn) => {
+    [quickRun10dBtn, quickRun30dBtn, quickRun30dStandardBtn].forEach((btn) => {
       if (!btn) return;
       if (!btn.dataset.defaultTitle) {
         btn.setAttribute('data-default-title', btn.textContent || '');
@@ -704,7 +708,24 @@ window.SubscriptionsManager = (function () {
     if (quickRun30dBtn && !quickRun30dBtn._bound) {
       quickRun30dBtn._bound = true;
       quickRun30dBtn.addEventListener('click', () => {
-        runQuickFetch(30, quickRunMsgEl);
+        runQuickFetch(
+          30,
+          quickRunMsgEl,
+          '已发起 30 天速览抓取任务（skims）。',
+          { fetchMode: 'skims' },
+        );
+      });
+    }
+
+    if (quickRun30dStandardBtn && !quickRun30dStandardBtn._bound) {
+      quickRun30dStandardBtn._bound = true;
+      quickRun30dStandardBtn.addEventListener('click', () => {
+        runQuickFetch(
+          30,
+          quickRunMsgEl,
+          '已发起 30 天全标准抓取任务。',
+          { fetchMode: 'standard' },
+        );
       });
     }
 
