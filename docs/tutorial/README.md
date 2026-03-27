@@ -58,7 +58,8 @@
 </p>
 
 5. 下载仓库里的脚本，并导入到 Zotero 中  
-   脚本链接：[`others/actions-zotero.yml`](../../others/actions-zotero.yml)
+   脚本链接：
+   <a href="others/actions-zotero.yml" data-no-router download="actions-zotero.yml">下载 actions-zotero.yml</a>
 
 <p align="center">
   <img src="docs/tutorial/tutorial-zotero-script-download.png" alt="下载 Zotero 脚本" width="88%" />
